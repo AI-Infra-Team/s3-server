@@ -223,7 +223,14 @@ impl S3Storage for FileSystem {
         let dst_path = trace_try!(self.get_object_path(&input.bucket, &input.key));
 
         let file_metadata = trace_try!(async_fs::metadata(&src_path).await);
-        let last_modified = time::to_rfc3339(trace_try!(file_metadata.modified()));
+        let last_modified = file_metadata.modified().map_or_else(
+            |err| {
+                tracing::warn!("Failed to get last modified time: {:?}", err);
+                None
+            },
+            |t| Some(time::to_rfc3339(t)),
+        );
+        // let last_modified = time::to_rfc3339(trace_try!(file_metadata.modified()));
 
         let _ = trace_try!(async_fs::copy(&src_path, &dst_path).await);
 
@@ -244,7 +251,7 @@ impl S3Storage for FileSystem {
         let output = CopyObjectOutput {
             copy_object_result: CopyObjectResult {
                 e_tag: Some(format!("\"{}\"", md5_sum)),
-                last_modified: Some(last_modified),
+                last_modified: last_modified,
             }
             .apply(Some),
             ..CopyObjectOutput::default()
@@ -351,7 +358,14 @@ impl S3Storage for FileSystem {
         };
 
         let file_metadata = trace_try!(file.metadata().await);
-        let last_modified = time::to_rfc3339(trace_try!(file_metadata.modified()));
+        // let last_modified = time::to_rfc3339(trace_try!(file_metadata.modified()));
+        let last_modified = file_metadata.modified().map_or_else(
+            |err| {
+                tracing::warn!("Failed to get last modified time: {:?}", err);
+                None
+            },
+            |t| Some(time::to_rfc3339(t)),
+        );
 
         let content_length = {
             let file_len = file_metadata.len();
@@ -414,7 +428,7 @@ impl S3Storage for FileSystem {
         let output: GetObjectOutput = GetObjectOutput {
             body: Some(crate::dto::ByteStream::new(stream)),
             content_length: Some(trace_try!(content_length.try_into())),
-            last_modified: Some(last_modified),
+            last_modified,
             metadata: object_metadata,
             e_tag: Some(format!("\"{}\"", md5_sum)),
             ..GetObjectOutput::default() // TODO: handle other fields
@@ -451,7 +465,14 @@ impl S3Storage for FileSystem {
         }
 
         let file_metadata = trace_try!(async_fs::metadata(path).await);
-        let last_modified = time::to_rfc3339(trace_try!(file_metadata.modified()));
+        // let last_modified = time::to_rfc3339(trace_try!(file_metadata.modified()));
+        let last_modified = file_metadata.modified().map_or_else(
+            |err| {
+                tracing::warn!("Failed to get last modified time: {:?}", err);
+                None
+            },
+            |t| Some(time::to_rfc3339(t)),
+        );
         let size = file_metadata.len();
 
         let object_metadata = trace_try!(self.load_metadata(&input.bucket, &input.key).await);
@@ -459,7 +480,7 @@ impl S3Storage for FileSystem {
         let output: HeadObjectOutput = HeadObjectOutput {
             content_length: Some(trace_try!(size.try_into())),
             content_type: Some(mime::APPLICATION_OCTET_STREAM.as_ref().to_owned()), // TODO: handle content type
-            last_modified: Some(last_modified),
+            last_modified: last_modified,
             metadata: object_metadata,
             ..HeadObjectOutput::default()
         };
@@ -526,13 +547,19 @@ impl S3Storage for FileSystem {
                     }
 
                     let metadata = trace_try!(entry.metadata().await);
-                    let last_modified = time::to_rfc3339(trace_try!(metadata.modified()));
+                    let last_modified = metadata.modified().map_or_else(
+                        |err| {
+                            tracing::warn!("Failed to get last modified time: {:?}", err);
+                            None
+                        },
+                        |t| Some(time::to_rfc3339(t)),
+                    );
                     let size = metadata.len();
 
                     objects.push(Object {
                         e_tag: None,
                         key: Some(key.to_string_lossy().into()),
-                        last_modified: Some(last_modified),
+                        last_modified,
                         owner: None,
                         size: Some(trace_try!(size.try_into())),
                         storage_class: None,
@@ -592,13 +619,20 @@ impl S3Storage for FileSystem {
                     }
 
                     let metadata = trace_try!(entry.metadata().await);
-                    let last_modified = time::to_rfc3339(trace_try!(metadata.modified()));
+                    // let last_modified = time::to_rfc3339(trace_try!(metadata.modified()));
+                    let last_modified = metadata.modified().map_or_else(
+                        |err| {
+                            tracing::warn!("Failed to get last modified time: {:?}", err);
+                            None
+                        },
+                        |t| Some(time::to_rfc3339(t)),
+                    );
                     let size = metadata.len();
 
                     objects.push(Object {
                         e_tag: None,
                         key: Some(key.to_string_lossy().into()),
-                        last_modified: Some(last_modified),
+                        last_modified: last_modified,
                         owner: None,
                         size: Some(trace_try!(size.try_into())),
                         storage_class: None,
