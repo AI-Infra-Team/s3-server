@@ -503,9 +503,15 @@ impl S3Storage for FileSystem {
                 let name = file_name.to_string_lossy();
                 if S3Path::check_bucket_name(&*name) {
                     let file_meta = trace_try!(entry.metadata().await);
-                    let creation_date = trace_try!(file_meta.created());
+                    let creation_date = file_meta.created().map_or_else(
+                        |err| {
+                            tracing::warn!("Failed to get creation date: {:?}", err);
+                            None
+                        },
+                        |t| Some(time::to_rfc3339(t)),
+                    );
                     buckets.push(Bucket {
-                        creation_date: Some(time::to_rfc3339(creation_date)),
+                        creation_date,
                         name: Some(name.into()),
                     });
                 }
