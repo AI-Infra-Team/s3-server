@@ -201,6 +201,7 @@ impl S3Storage for FileSystem {
         trace_try!(async_fs::create_dir(&path).await);
 
         let output = CreateBucketOutput::default(); // TODO: handle other fields
+        tracing::debug!("bucket created: {:?}", output);
         Ok(output)
     }
 
@@ -257,6 +258,12 @@ impl S3Storage for FileSystem {
             ..CopyObjectOutput::default()
         };
 
+        tracing::debug!(
+            bucket = %input.bucket,
+            key = %input.key,
+            "CopyObject: copy object"
+        );
+
         Ok(output)
     }
 
@@ -267,6 +274,7 @@ impl S3Storage for FileSystem {
     ) -> S3StorageResult<DeleteBucketOutput, DeleteBucketError> {
         let path = trace_try!(self.get_bucket_path(&input.bucket));
         trace_try!(async_fs::remove_dir_all(path).await);
+        tracing::debug!(bucket = %input.bucket, "DeleteBucket: delete bucket");
         Ok(DeleteBucketOutput)
     }
 
@@ -286,6 +294,7 @@ impl S3Storage for FileSystem {
             trace_try!(async_fs::remove_file(path).await);
         }
         let output = DeleteObjectOutput::default(); // TODO: handle other fields
+        tracing::debug!("DeleteObject: delete object {:?}", output);
         Ok(output)
     }
 
@@ -314,6 +323,7 @@ impl S3Storage for FileSystem {
             deleted: Some(deleted),
             ..DeleteObjectsOutput::default()
         };
+        debug!("DeleteObjects: delete objects {:?}", output);
         Ok(output)
     }
 
@@ -333,6 +343,10 @@ impl S3Storage for FileSystem {
             location_constraint: None, // TODO: handle region
         };
 
+        debug!(
+            path = %path.display(),
+            "GetBucketLocation: get bucket location",
+        );
         Ok(output)
     }
 
@@ -434,6 +448,7 @@ impl S3Storage for FileSystem {
             ..GetObjectOutput::default() // TODO: handle other fields
         };
 
+        tracing::debug!("GetObject done");
         Ok(output)
     }
 
@@ -448,7 +463,7 @@ impl S3Storage for FileSystem {
             let err = code_error!(NoSuchBucket, "The specified bucket does not exist.");
             return Err(err.into());
         }
-
+        tracing::debug!("HeadBucket done");
         Ok(HeadBucketOutput)
     }
 
@@ -484,6 +499,7 @@ impl S3Storage for FileSystem {
             metadata: object_metadata,
             ..HeadObjectOutput::default()
         };
+        tracing::debug!(?output, "HeadObject: output");
         Ok(output)
     }
 
@@ -522,6 +538,7 @@ impl S3Storage for FileSystem {
             buckets: Some(buckets),
             owner: None, // TODO: handle owner
         };
+        tracing::debug!("ListBuckets: {:?}", output);
         Ok(output)
     }
 
@@ -594,6 +611,7 @@ impl S3Storage for FileSystem {
             prefix: None,
         };
 
+        tracing::debug!("ListObjects: {:?}", output);
         Ok(output)
     }
 
@@ -653,6 +671,7 @@ impl S3Storage for FileSystem {
             lhs_key.cmp(rhs_key)
         });
 
+        tracing::debug!("ListObjectsV2: {:?}", objects);
         // TODO: handle other fields
         let output = ListObjectsV2Output {
             key_count: Some(trace_try!(objects.len().try_into())),
@@ -747,6 +766,7 @@ impl S3Storage for FileSystem {
             ..PutObjectOutput::default()
         }; // TODO: handle other fields
 
+        tracing::debug!("PutObject: {:?}", output);
         Ok(output)
     }
 
@@ -764,6 +784,7 @@ impl S3Storage for FileSystem {
             ..CreateMultipartUploadOutput::default()
         };
 
+        tracing::debug!("CreateMultipartUpload: {:?}", output);
         Ok(output)
     }
 
@@ -811,6 +832,7 @@ impl S3Storage for FileSystem {
             ..UploadPartOutput::default()
         };
 
+        tracing::debug!("UploadPart: {:?}", output);
         Ok(output)
     }
 
@@ -892,6 +914,7 @@ impl S3Storage for FileSystem {
             e_tag: Some(e_tag),
             ..CompleteMultipartUploadOutput::default()
         };
+        tracing::debug!("CompleteMultipartUpload: {:?}", output);
         Ok(output)
     }
 }
